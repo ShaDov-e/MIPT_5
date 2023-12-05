@@ -2,16 +2,11 @@ package com.example.mipt_5_ce;
 
 import android.os.AsyncTask;
 import android.util.Log;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
+
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.List;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 
 public class DataLoader extends AsyncTask<String, Void, Void> {
 
@@ -54,21 +49,8 @@ public class DataLoader extends AsyncTask<String, Void, Void> {
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
             InputStream inputStream = connection.getInputStream();
-            DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-            Document doc = dBuilder.parse(inputStream);
-
-            Element rootElement = doc.getDocumentElement();
-            NodeList cubeList = rootElement.getElementsByTagName("Cube");
-
-            currencyOptions = new ArrayList<>();
-
-            for (int i = 0; i < cubeList.getLength(); i++) {
-                Element cube = (Element) cubeList.item(i);
-                if (cube.hasAttribute("currency")) {
-                    currencyOptions.add(cube.getAttribute("currency"));
-                }
-            }
+            Parser parser = new Parser();
+            currencyOptions = parser.parseCurrencyOptions(inputStream);
 
             inputStream.close();
             connection.disconnect();
@@ -84,30 +66,13 @@ public class DataLoader extends AsyncTask<String, Void, Void> {
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
             InputStream inputStream = connection.getInputStream();
-            DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-            Document doc = dBuilder.parse(inputStream);
+            Parser parser = new Parser();
 
-            Element rootElement = doc.getDocumentElement();
-            NodeList cubeList = rootElement.getElementsByTagName("Cube");
+            // Fetch exchange rates for both source and target currencies
+            double sourceRate = parser.parseExchangeRate(inputStream, sourceCurrency, targetCurrency);
+            double targetRate = parser.parseExchangeRate(inputStream, sourceCurrency, targetCurrency);
 
-            double sourceRate = 1.0;
-            double targetRate = 1.0;
-
-            for (int i = 0; i < cubeList.getLength(); i++) {
-                Element cube = (Element) cubeList.item(i);
-                if (cube.hasAttribute("currency") && cube.hasAttribute("rate")) {
-                    String currency = cube.getAttribute("currency");
-                    double rate = Double.parseDouble(cube.getAttribute("rate"));
-
-                    if (currency.equals(sourceCurrency)) {
-                        sourceRate = rate;
-                    } else if (currency.equals(targetCurrency)) {
-                        targetRate = rate;
-                    }
-                }
-            }
-
+            // Calculate the converted amount using both rates
             double convertedAmount = (amount / sourceRate) * targetRate;
             convertedCurrency = String.format("%.2f %s", convertedAmount, targetCurrency);
 
@@ -118,5 +83,8 @@ public class DataLoader extends AsyncTask<String, Void, Void> {
             Log.e("DataLoader", "Error fetching exchange rates: " + e.getMessage());
         }
     }
+
 }
+
+
 
